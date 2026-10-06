@@ -7,25 +7,26 @@ const POLITENESS_DELAY_MS = 500;
  * Extracts a single book raw record from its product detail page.
  * @param {string} productUrl - Absolute URL of the book product page
  * @param {string} sourcePage - Provenance catalogue URL where this link was found
+ * @param {object} [reporter] - Optional RunReporter instance
  * @returns {Promise<object>} Raw record with all 8 specified keys
  */
-async function extractBook(productUrl, sourcePage) {
-  // Derive safe cache filename from URL slug
+async function extractBook(productUrl, sourcePage, reporter) {
   const urlParts = productUrl.split('/').filter(Boolean);
   const slug = urlParts[urlParts.length - 2] || 'book';
   const cacheFilename = `book-${slug}.html`;
 
   const { html, fromCache } = await fetchWithCache(productUrl, cacheFilename);
-  const $ = cheerio.load(html);
+  if (reporter) {
+    reporter.recordPageFetch(fromCache);
+  }
 
-  // Target the product main area specifically
+  const $ = cheerio.load(html);
   const productMain = $('article.product_page, .product_main');
 
   const title = $('h1').text().trim();
   const price_text = productMain.find('.price_color').first().text().trim();
   const availability_text = productMain.find('.instock.availability').text().replace(/\s+/g, ' ').trim();
 
-  // Extract rating string (e.g. "Three", "One")
   const ratingEl = productMain.find('.star-rating');
   let rating_text = null;
   if (ratingEl.length > 0) {
@@ -33,7 +34,6 @@ async function extractBook(productUrl, sourcePage) {
     rating_text = classes.find((c) => c !== 'star-rating') || null;
   }
 
-  // Description is optional in schema; store null if missing
   const descEl = $('#product_description').next('p');
   const description = (descEl.length > 0 && descEl.text().trim() !== '') ? descEl.text().trim() : null;
 
@@ -48,7 +48,6 @@ async function extractBook(productUrl, sourcePage) {
     fetched_at: new Date().toISOString()
   };
 
-  // Wait 500ms between real live requests
   if (!fromCache) {
     await new Promise((resolve) => setTimeout(resolve, POLITENESS_DELAY_MS));
   }
@@ -57,30 +56,29 @@ async function extractBook(productUrl, sourcePage) {
 }
 
 /**
- * Extracts raw records for an array of book URLs.
- * @param {string[]} bookUrls - List of 60 book URLs
+ * Extracts raw records for an array of book URLs, surviving page failures.
+ * @param {string[]} bookUrls - List of book URLs
  * @param {Map<string, string>} [urlToSourceMap] - Mapping of book URL to source page
+ * @param {object} [reporter] - Optional RunReporter instance
  * @returns {Promise<object[]>} Array of raw records
  */
-async function extractAllBooks(bookUrls, urlToSourceMap = new Map()) {
+async function extractAllBooks(bookUrls, urlToSourceMap = new Map(), reporter) {
   const records = [];
-  console.log(`Starting extraction for ${bookUrls.length} books...`);
 
   for (let i = 0; i < bookUrls.length; i++) {
     const url = bookUrls[i];
     const sourcePage = urlToSourceMap.get(url) || 'https://books.toscrape.com/catalogue/page-1.html';
     try {
-      const record = await extractBook(url, sourcePage);
+      const record = await extractBook(url, sourcePage, reporter);
       records.push(record);
-      if ((i + 1) % 10 === 0 || i === bookUrls.length - 1) {
-        console.log(`Progress: ${i + 1}/${bookUrls.length} books processed.`);
-      }
     } catch (err) {
-      console.error(`Failed to extract ${url}:`, err.message);
+      console.warn(`[SKIPPED FAILED PAGE] ${url}: ${err.message}`);
+      if (reporter) {
+        reporter.recordPageFailure(url, err);
+      }
     }
   }
 
-  console.log(`CHECKPOINT: detail_pages=${records.length}`);
   return records;
 }
 

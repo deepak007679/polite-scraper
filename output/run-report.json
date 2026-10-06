@@ -1,0 +1,16 @@
+{
+  "start_time": "2026-10-06T11:14:45.857Z",
+  "end_time": "2026-10-06T11:14:46.986Z",
+  "duration_ms": 1129,
+  "pages_fetched": 0,
+  "cache_hits": 60,
+  "valid_records": 60,
+  "invalid_records": 0,
+  "failed_pages": 1,
+  "failed_urls": [
+    {
+      "url": "https://books.toscrape.com/catalogue/deliberately-broken-page-404_9999/index.html",
+      "reason": "HTTP 404 Not Found - page does not exist (https://books.toscrape.com/catalogue/deliberately-broken-page-404_9999/index.html)"
+    }
+  ]
+}
