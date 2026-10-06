@@ -7,13 +7,14 @@ const POLITENESS_DELAY_MS = 600;
 
 /**
  * Discover book links across the first 3 catalogue pages.
- * @returns {Promise<{ bookUrls: string[], cataloguePagesCount: number }>}
+ * @returns {Promise<{ bookUrls: string[], cataloguePagesCount: number, urlToSourceMap: Map<string, string> }>}
  */
 async function discoverBooks(startUrl = START_URL, maxPages = MAX_CATALOGUE_PAGES) {
   let currentUrl = startUrl;
   let pageIndex = 1;
   const discoveredUrls = [];
   const uniqueUrlsSet = new Set();
+  const urlToSourceMap = new Map();
 
   while (currentUrl && pageIndex <= maxPages) {
     const cacheFilename = `catalogue-page-${pageIndex}.html`;
@@ -32,6 +33,9 @@ async function discoverBooks(startUrl = START_URL, maxPages = MAX_CATALOGUE_PAGE
         pageBooks.push(absoluteUrl);
         discoveredUrls.push(absoluteUrl);
         uniqueUrlsSet.add(absoluteUrl);
+        if (!urlToSourceMap.has(absoluteUrl)) {
+          urlToSourceMap.set(absoluteUrl, currentUrl);
+        }
       }
     });
 
@@ -56,7 +60,8 @@ async function discoverBooks(startUrl = START_URL, maxPages = MAX_CATALOGUE_PAGE
     cataloguePagesCount: pageIndex,
     discoveredCount: discoveredUrls.length,
     uniqueCount: uniqueUrlsSet.size,
-    bookUrls: Array.from(uniqueUrlsSet)
+    bookUrls: Array.from(uniqueUrlsSet),
+    urlToSourceMap
   };
 
   console.log(`CHECKPOINT: catalogue_pages=${result.cataloguePagesCount}, discovered=${result.discoveredCount}, unique_urls=${result.uniqueCount}`);
