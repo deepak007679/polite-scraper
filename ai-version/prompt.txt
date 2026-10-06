@@ -1,0 +1,20 @@
+Build a polite, deterministic web scraper in Node.js for 'Books to Scrape' (https://books.toscrape.com/).
+
+Requirements:
+1. Target: Crawl the first 3 catalogue pages of Books to Scrape to discover 60 book detail URLs.
+2. Politeness & Ethics:
+   - Identify with custom User-Agent: 'FlyRankInternship-A9/1.0 (+https://github.com/deepak007679/polite-scraper)'
+   - Enforce an 8-second request timeout
+   - Introduce a 500ms delay between consecutive requests
+   - Cache downloaded HTML pages in a local 'cache/' directory to avoid repeated hits to the live sandbox
+3. Extraction: For every book, extract: title, product_url (absolute), price_text, availability_text, rating_text, description (null if missing), source_page, and fetched_at timestamp.
+4. Normalization & Schema Validation:
+   - Convert price_text to numeric price_gbp
+   - Validate records with Zod schema before saving
+   - Set invalid records aside in errors.json
+5. Idempotent Storage:
+   - Deduplicate using canonical product_url
+   - Save clean records to output/books.json
+6. Failure Resilience & Reporting:
+   - If one book page fails or returns 404/500, log and skip it; the rest of the run must not crash.
+   - Write output/run-report.json with duration, fetched count, cache hits, valid/invalid count, and failed pages.

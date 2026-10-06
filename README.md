@@ -128,3 +128,42 @@ Our scraper is designed for static, server-rendered HTML. It parses raw markup d
 1. **Always prefer an official API**: If a service provides a public or authenticated REST/GraphQL API, always use the API rather than scraping HTML.
 2. **Never bypass defenses**: Never circumvent authentication barriers, CAPTCHAs, paywalls, or access controls.
 3. **Minimize footprint**: Collect only the specific fields required for your business logic; do not scrape entire sites indiscriminately.
+
+---
+
+## 🤖 Bonus Stage: The AI Rematch ("AI vs Me")
+
+In the bonus stage, we quarantined an AI-generated scraper in `ai-version/` and conducted a comparative code review against our hand-built pipeline.
+
+### 1. Full Prompt Given to the AI
+See [`ai-version/prompt.txt`](./ai-version/prompt.txt) for the full text.
+
+### 2. Checkpoint Comparison
+
+| Metric / Checkpoint | Hand-Built Pipeline | Quarantined AI Version |
+|---|---|---|
+| **Discovered Books** | 60 books across 3 pages | 60 books (hardcoded loop 1..3) |
+| **URL Resolution** | Standard `new URL(href, currentUrl).href` | String concatenation: `https://.../catalogue/${href}` (fragile) |
+| **Schema Validation** | Strict Zod schema (12 fields, ratings, stock, provenance) | Minimal schema (3 fields: title, url, price only) |
+| **Provenance Tracking** | Keeps `source_page` and ISO `fetched_at` on every record | Silently discarded all provenance data |
+| **Failure Handling** | Retries 5xx/timeouts, ignores 404/403, logs run report | Generic `try...catch` with empty console log |
+| **Run Report** | Generates detailed `output/run-report.json` | None (no reporting metrics written) |
+
+### 3. Three Critical Questions Answered
+
+#### Q1: What did the AI do better — and do you understand that code?
+The AI used `encodeURIComponent(url) + '.html'` to generate cache filenames. That approach is concise and eliminates slug parsing, though it creates long and less human-readable filenames on disk.
+
+#### Q2: What did it get wrong or silently skip?
+1. **String-gluing URLs**: It constructed product URLs via string concatenation (`https://books.toscrape.com/catalogue/${href}`) rather than RFC-compliant URL resolution (`new URL(href, base)`). If the HTML had relative paths like `../catalogue/book`, its URLs would break.
+2. **Stripped Provenance**: It completely dropped `source_page` and `fetched_at` receipts, violating our auditing requirements.
+3. **Skipped the Run Report**: Despite requesting a run report, the AI failed to implement `run-report.json` entirely.
+
+#### Q3: What did your prompt forget to say?
+Our initial prompt did not explicitly demand strict field names for the Zod schema or mandate that the crawler follow the site's own `<li class="next">` link rather than hardcoding a loop from 1 to 3.
+
+### 4. One Rematch: Improved Prompt & Outcome
+- **Improved Prompt**:
+  *"Build a Cheerio scraper in Node.js for Books to Scrape. Crawl by dynamically following the 'next' pagination button up to 3 pages. Resolve all links using new URL(). Validate with a Zod schema containing all 8 raw fields and numeric price_gbp. Write a run-report.json recording start time, duration, cache hits, and failed pages."*
+- **Outcome Delta**:
+  The revised prompt forced the AI to implement dynamic pagination traversal, strict RFC URL resolution, and structured run reporting matching our engineering standards.
