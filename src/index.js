@@ -1,23 +1,20 @@
 /**
  * FlyRank Internship · Backend Track · Week 5 · Assignment A9
- * The Polite Scraper — Stage 0: Classify Scraping Target
+ * The Polite Scraper — Stage 1: Fetch Once, Cache Once
  */
 
-const TARGET_URL = 'https://books.toscrape.com/';
-const ROBOTS_URL = 'https://books.toscrape.com/robots.txt';
+const { fetchWithCache } = require('./fetcher');
+
+const PAGE_1_URL = 'https://books.toscrape.com/catalogue/page-1.html';
 
 async function main() {
-  console.log('=== The Polite Scraper ===');
-  console.log(`Target: ${TARGET_URL}`);
-  console.log('Classified as public scraping sandbox practice environment.');
-  console.log(`Checking ${ROBOTS_URL}...`);
-  console.log('Result: HTTP 404 (No robots file found).');
-  console.log('Scope: First 3 catalogue pages (60 books).');
-  console.log('Policy: Respectful rate-limiting (>=500ms delay), honest user-agent, local caching.');
+  console.log('=== Stage 1: Fetch Once, Cache Once ===');
+  const result = await fetchWithCache(PAGE_1_URL, 'catalogue-page-1.html');
+  console.log(`Response size: ${result.size} bytes (Cached: ${result.fromCache})`);
 }
 
 if (require.main === module) {
   main().catch(console.error);
 }
 
-module.exports = { TARGET_URL, ROBOTS_URL };
+module.exports = { main };
