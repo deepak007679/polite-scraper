@@ -1,45 +1,54 @@
 /**
  * FlyRank Internship · Backend Track · Week 5 · Assignment A9
- * The Polite Scraper — Stage 5: Survive Failures, Report the Run
+ * The Polite Scraper — Main Pipeline
  */
 
 const { discoverBooks } = require('./crawler');
 const { extractAllBooks } = require('./extractor');
 const { processAndStoreRecords } = require('./normalizer');
 const { RunReporter } = require('./reporter');
+const { exportToCsv } = require('./csvExporter');
+const { detectChanges } = require('./changeDetector');
 
 const DELIBERATELY_BROKEN_URL = 'https://books.toscrape.com/catalogue/deliberately-broken-page-404_9999/index.html';
 
-async function runPipeline({ injectFailure = false } = {}) {
-  console.log('=== Starting Polite Scraping Pipeline ===');
+async function runPipeline({ injectFailure = true } = {}) {
+  console.log('=== Starting Polite Scraping Pipeline ===\n');
   const reporter = new RunReporter();
 
-  // 1. Discover catalogue
+  // 1. Discover catalogue pages (up to 3 pages)
   const { bookUrls, urlToSourceMap } = await discoverBooks();
 
-  // 2. Inject deliberate broken URL for Stage 5 test if requested
+  // 2. Inject one deliberate broken URL to prove failure resilience without crashing
   const urlsToProcess = [...bookUrls];
   if (injectFailure) {
-    console.log(`[TEST INJECTION] Adding one deliberate broken URL to prove failure resilience: ${DELIBERATELY_BROKEN_URL}`);
+    console.log(`\n[FAILURE RESILIENCE TEST] Injecting 1 broken URL: ${DELIBERATELY_BROKEN_URL}`);
     urlsToProcess.push(DELIBERATELY_BROKEN_URL);
   }
 
-  // 3. Extract raw records (isolated per page)
+  // 3. Extract raw records (isolated per book)
   const rawRecords = await extractAllBooks(urlsToProcess, urlToSourceMap, reporter);
 
-  // 4. Clean, validate, and store records
+  // 4. Clean, validate, and store records idempotently
   const result = processAndStoreRecords(rawRecords);
   reporter.setRecordStats(result.validCount, result.invalidCount);
 
-  // 5. Save run report
+  // 5. Extras: CSV export and hash-based change detection
+  exportToCsv(result.books);
+  detectChanges(result.books);
+
+  // 6. Save comprehensive run report
   const report = reporter.saveReport();
 
-  console.log(`\nCHECKPOINT: books.json holds ${result.validCount} good records, failed_pages: ${report.failed_pages}`);
+  console.log(`\nCHECKPOINT SUMMARY:`);
+  console.log(`- books.json holds: ${result.validCount} valid unique records`);
+  console.log(`- failed_pages: ${report.failed_pages} (handled politely without crashing)`);
+  console.log(`- CSV exported: output/books.csv`);
+
   return { result, report };
 }
 
 if (require.main === module) {
-  // Run with failure injection to fulfill Stage 5 checkpoint
   runPipeline({ injectFailure: true }).catch(console.error);
 }
 
