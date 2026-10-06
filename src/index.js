@@ -1,16 +1,14 @@
 /**
  * FlyRank Internship · Backend Track · Week 5 · Assignment A9
- * The Polite Scraper — Stage 1: Fetch Once, Cache Once
+ * The Polite Scraper — Stage 2: Discover Three Catalogue Pages
  */
 
-const { fetchWithCache } = require('./fetcher');
-
-const PAGE_1_URL = 'https://books.toscrape.com/catalogue/page-1.html';
+const { discoverBooks } = require('./crawler');
 
 async function main() {
-  console.log('=== Stage 1: Fetch Once, Cache Once ===');
-  const result = await fetchWithCache(PAGE_1_URL, 'catalogue-page-1.html');
-  console.log(`Response size: ${result.size} bytes (Cached: ${result.fromCache})`);
+  console.log('=== Stage 2: Discover Three Catalogue Pages ===');
+  const result = await discoverBooks();
+  console.log(`Discovered ${result.uniqueCount} unique book URLs ready for extraction.`);
 }
 
 if (require.main === module) {
